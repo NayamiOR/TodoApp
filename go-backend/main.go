@@ -1,13 +1,37 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"fmt"
+	"go-backend/src/config"
+	"go-backend/src/db"
+	"go-backend/src/service"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
+
+func init() {
+
+}
 
 func main() {
-	router := gin.Default()
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	_ = router.Run() // listens on 0.0.0.0:8080 by default
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	c := config.GetConfig()
+
+	// Ensure DB disconnection on application exit
+	defer func() {
+		err := db.DisconnectDb()
+		if err != nil {
+			fmt.Printf("failed to disconnect db: %v", err)
+		}
+	}()
+
+	routes := service.ApiHandleFunctions{}
+	router := service.NewRouter(routes)
+
+	port := fmt.Sprintf(":%d", c.ServerPort)
+	err := router.Run(port)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to start server")
+	}
 }
